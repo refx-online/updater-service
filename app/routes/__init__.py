@@ -23,14 +23,15 @@ router.add_api_route(
     methods=["GET"],
 )
 
+# hi??? merge pls???
 router.add_api_route(
-    "/files/{filename}",
+    "/resources/client/{filename}",
     stream.download_client_file,
     methods=["GET"],
 )
 
 router.add_api_route(
-    "/patcher/{filename}",
+    "/resources/patcher/{filename}",
     stream.download_patcher_file,
     methods=["GET"],
 )
