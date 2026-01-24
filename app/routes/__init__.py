@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from fastapi import Response
 
+from . import avatar
 from . import metadata
 from . import stream
 
@@ -33,5 +34,12 @@ router.add_api_route(
 router.add_api_route(
     "/resources/patcher/{filename}",
     stream.download_patcher_file,
+    methods=["GET"],
+)
+
+# todo: move to assets-service
+router.add_api_route(
+    "/{id}",
+    avatar.get_avatar,
     methods=["GET"],
 )
