@@ -11,15 +11,24 @@ def read_bool(value: str) -> bool:
     return value.lower() in ("true", "1")
 
 
-DEBUG = read_bool(os.environ["DEBUG"])
-HOST = os.environ["HOST"]
-PORT = int(os.environ["PORT"])
+def getenv(name: str, default: str | None = None) -> str:
+    # NOTE: plain os.environ[name] dies with a bare KeyError at import time,
+    # which tells you nothing. fail fast with the actual var name instead.
+    value = os.environ.get(name, default)
+    if value is None:
+        raise RuntimeError(f"missing required env var: {name}")
+    return value
 
-STORAGE_PUBLIC_BASE_URL = os.environ["STORAGE_PUBLIC_BASE_URL"]
 
-R2_ACCOUNT_ID = os.environ["R2_ACCOUNT_ID"]
-R2_ACCESS_KEY = os.environ["R2_ACCESS_KEY"]
-R2_SECRET_KEY = os.environ["R2_SECRET_KEY"]
-R2_BUCKET = os.environ["R2_BUCKET"]
+DEBUG = read_bool(getenv("DEBUG", "false"))
+HOST = getenv("HOST", "0.0.0.0")
+PORT = int(getenv("PORT", "1272"))
 
-LOCAL_STORAGE_ROOT = os.environ["LOCAL_STORAGE_ROOT"]
+STORAGE_PUBLIC_BASE_URL = getenv("STORAGE_PUBLIC_BASE_URL", "")
+
+R2_ACCOUNT_ID = getenv("R2_ACCOUNT_ID", "")
+R2_ACCESS_KEY = getenv("R2_ACCESS_KEY", "")
+R2_SECRET_KEY = getenv("R2_SECRET_KEY", "")
+R2_BUCKET = getenv("R2_BUCKET", "")
+
+LOCAL_STORAGE_ROOT = getenv("LOCAL_STORAGE_ROOT", "")
