@@ -32,3 +32,7 @@ R2_SECRET_KEY = getenv("R2_SECRET_KEY", "")
 R2_BUCKET = getenv("R2_BUCKET", "")
 
 LOCAL_STORAGE_ROOT = getenv("LOCAL_STORAGE_ROOT", "")
+
+# bearer token for POST /resources/{client,patcher}/{filename} uploads.
+# empty = uploads disabled.
+UPLOAD_TOKEN = getenv("UPLOAD_TOKEN", "")
