@@ -6,6 +6,7 @@ from fastapi import Response
 from . import avatar
 from . import metadata
 from . import stream
+from . import upload
 
 router = APIRouter(
     default_response_class=Response,
@@ -35,6 +36,12 @@ router.add_api_route(
     "/resources/patcher/{filename}",
     stream.download_patcher_file,
     methods=["GET"],
+)
+
+router.add_api_route(
+    "/resources/{prefix}/{filename}",
+    upload.upload_file,
+    methods=["POST"],
 )
 
 # todo: move to assets-service

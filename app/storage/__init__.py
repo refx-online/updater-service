@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator
 from collections.abc import Callable
 from pathlib import Path
@@ -15,7 +16,13 @@ from .base import StorageBackend
 from .local import LocalStorageBackend
 from .r2 import R2StorageBackend
 
+log = logging.getLogger(__name__)
+
 T = TypeVar("T")
+
+# errors that mean "r2 didn't work, try local". ValueError covers
+# aioboto3's "Invalid endpoint" when creds are missing/malformed.
+R2_ERRORS = (BotoCoreError, ClientError, OSError, ValueError)
 
 
 class Storage:
@@ -24,6 +31,10 @@ class Storage:
             root=Path(settings.LOCAL_STORAGE_ROOT),
             public_base_url=settings.STORAGE_PUBLIC_BASE_URL,
         )
+
+        # NOTE: no point ever touching r2 without an account + bucket —
+        # go straight local instead of failing into the fallback per call.
+        self._use_r2 = bool(settings.R2_ACCOUNT_ID and settings.R2_BUCKET)
 
         session = Session(
             aws_access_key_id=settings.R2_ACCESS_KEY,
@@ -42,9 +53,12 @@ class Storage:
         self,
         fn: Callable[[StorageBackend], T],
     ) -> T:
+        if not self._use_r2:
+            return await fn(self._local)
         try:
             return await fn(self._primary)
-        except (BotoCoreError, ClientError, OSError):
+        except R2_ERRORS as e:
+            log.warning("r2 failed, falling back to local: %r", e)
             return await fn(self._local)
 
     async def list_files(self, prefix: str):
@@ -54,9 +68,14 @@ class Storage:
 
     async def stream_file(self, key: str) -> AsyncIterator[bytes]:
         """Stream file with fallback from primary to local storage."""
+        if not self._use_r2:
+            async for chunk in self._local.stream_file(key):
+                yield chunk
+            return
         try:
             async for chunk in self._primary.stream_file(key):
                 yield chunk
-        except (BotoCoreError, ClientError, OSError, FileNotFoundError):
+        except R2_ERRORS as e:
+            log.warning("r2 failed, falling back to local: %r", e)
             async for chunk in self._local.stream_file(key):
                 yield chunk
