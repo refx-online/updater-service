@@ -39,6 +39,20 @@ router.add_api_route(
 )
 
 router.add_api_route(
+    "/lazer/metadata.json",
+    stream.get_lazer_metadata,
+    methods=["GET"],
+)
+
+# NOTE: must stay ahead of the POST /resources/{prefix}/{filename} route below
+# only for readability -- they differ by method, so there is no real conflict.
+router.add_api_route(
+    "/resources/lazer/{filename}",
+    stream.download_lazer_file,
+    methods=["GET"],
+)
+
+router.add_api_route(
     "/resources/{prefix}/{filename}",
     upload.upload_file,
     methods=["POST"],

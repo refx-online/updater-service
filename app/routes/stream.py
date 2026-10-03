@@ -10,6 +10,7 @@ import app.state.services
 
 CLIENT_PREFIX = "resources/client"
 PATCHER_PREFIX = "resources/patcher"
+LAZER_PREFIX = "resources/lazer"
 
 
 async def _names(prefix: str) -> set[str]:
@@ -43,6 +44,32 @@ async def download_patcher_file(filename: str):
     return StreamingResponse(
         app.state.services.storage.stream_file(f"{PATCHER_PREFIX}/{filename}"),
         media_type="application/octet-stream",
+    )
+
+
+async def download_lazer_file(filename: str) -> StreamingResponse:
+    # NOTE: deliberately no .zip re-pack here, unlike client/patcher above.
+    # ci uploads a real archive, so stream it verbatim -- re-zipping would
+    # nest the zip inside another zip.
+    if filename not in await _names(LAZER_PREFIX):
+        raise HTTPException(status_code=404, detail="file not found")
+
+    return StreamingResponse(
+        app.state.services.storage.stream_file(f"{LAZER_PREFIX}/{filename}"),
+        media_type="application/octet-stream",
+    )
+
+
+async def get_lazer_metadata() -> StreamingResponse:
+    # ci writes latest.json next to the archive on every publish. 404 until the
+    # first build lands, which is honest -- an empty manifest would read as
+    # "up to date" and silently skip the update.
+    if "latest.json" not in await _names(LAZER_PREFIX):
+        raise HTTPException(status_code=404, detail="no lazer build published yet")
+
+    return StreamingResponse(
+        app.state.services.storage.stream_file(f"{LAZER_PREFIX}/latest.json"),
+        media_type="application/json",
     )
 
 

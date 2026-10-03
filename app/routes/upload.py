@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 import app.settings as settings
 
-ALLOWED_PREFIXES = ("client", "patcher")
+ALLOWED_PREFIXES = ("client", "patcher", "lazer")
 
 
 async def upload_file(prefix: str, filename: str, request: Request, authorization: str = Header(default="")):
