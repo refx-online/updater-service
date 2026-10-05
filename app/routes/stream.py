@@ -87,7 +87,27 @@ async def download_zip(prefix: str, filename: str):
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr(filename, raw)
 
+    # `no-store`, deliberately.
+    #
+    # `/resources/client/` is served from fixed filenames that CI overwrites in
+    # place, so an edge cache hit here is always wrong: a new build publishes to
+    # the same URL, and a cached zip hands the client last week's bytes. The
+    # symptom is nasty because it looks healthy -- the client logs only that it
+    # downloaded a file successfully, and then re-downloads the entire set on
+    # every check because the hash never matches what `metadata.json` advertises.
+    #
+    # The reason it happened: this returned a buffered `Response`, which is
+    # cacheable by default, while the raw-file path below returns a lazy
+    # `StreamingResponse` with no validator and was never cached. So only `.zip`
+    # got cached, for Cloudflare's default extension TTL (max-age=14400). The
+    # origin simply never expressed an opinion.
+    #
+    # Caching eligibility is a property of the **URL being immutable**, not of the
+    # file extension. `latest.json` points at `osu-lazer-<sha1>.zip`, so the lazer
+    # path is content-addressed and must stay cacheable -- which is why
+    # `download_lazer_file` above is deliberately left alone.
     return Response(
         buf.getvalue(),
         media_type="application/zip",
+        headers={"Cache-Control": "no-store"},
     )
