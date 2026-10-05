@@ -32,6 +32,30 @@ import httpx
 DEFAULT_BASE = "https://updater.041095.xyz"
 CLIENT_PREFIX = "resources/client"
 
+# Assemblies the stable client cannot start a multiplayer lobby without.
+#
+# This is the MessagePack 2.5 runtime closure for .NET Framework 4.8, plus the
+# corelib packages it drags in. `System.Buffers` is the one that was missing, and
+# it fails in the worst possible way: MessagePack's serialization buffers
+# (`ArrayPool`, `IBufferWriter`, `ReadOnlySequence`) live there, and
+# `MessagePackSecurity` touches them during *static initialisation*, so the only
+# symptom is a cascade of `TypeInitializationException` the first time a player
+# presses create. Nothing about the manifest being otherwise valid hints at it.
+#
+# A manifest consistency check cannot see this -- every entry it inspects hashes
+# correctly whether or not a dependency was ever uploaded -- so the closure is
+# asserted by name as its own check.
+MPV2_RUNTIME_ASSEMBLIES = (
+    "MessagePack.dll",
+    "MessagePack.Annotations.dll",
+    "Microsoft.Bcl.AsyncInterfaces.dll",
+    "System.Buffers.dll",
+    "System.Memory.dll",
+    "System.Numerics.Vectors.dll",
+    "System.Runtime.CompilerServices.Unsafe.dll",
+    "System.Threading.Tasks.Extensions.dll",
+)
+
 
 def verify(base: str = DEFAULT_BASE, *, verbose: bool = True) -> int:
     """Return the number of failures (0 == healthy)."""
@@ -45,6 +69,15 @@ def verify(base: str = DEFAULT_BASE, *, verbose: bool = True) -> int:
 
     failures: list[str] = []
     edge_cached: list[str] = []
+
+    published = {entry["filename"] for entry in meta}
+    missing_runtime = [name for name in MPV2_RUNTIME_ASSEMBLIES if name not in published]
+
+    if missing_runtime:
+        failures.append(
+            "MPV2 runtime closure incomplete, the client will fail at lobby create: "
+            + ", ".join(missing_runtime)
+        )
 
     for entry in meta:
         name = entry["filename"]
