@@ -45,7 +45,20 @@ CLIENT_PREFIX = "resources/client"
 # A manifest consistency check cannot see this -- every entry it inspects hashes
 # correctly whether or not a dependency was ever uploaded -- so the closure is
 # asserted by name as its own check.
-MPV2_RUNTIME_ASSEMBLIES = (
+MPV2_RUNTIME_FILES = (
+    # The binding redirects live here. `osu!.exe.config` is what carries them,
+    # and a config that is not published is indistinguishable from one that was
+    # never written: the assemblies all hash correctly and the client still
+    # cannot load MessagePack, failing at `MessagePackSecurity`'s static
+    # initialiser with
+    #
+    #   FileLoadException: The located assembly's manifest definition does not
+    #   match the assembly reference. (0x80131040)
+    #
+    # The shipped closure mixes 4.x and 6.x and the versions disagree --
+    # System.Memory 4.0.1.2 wants Unsafe 4.0.4.1, disk has 6.0.0.0 -- and
+    # .NET Framework binds exact-version, so without the redirects nothing loads.
+    "osu!.exe.config",
     "MessagePack.dll",
     "MessagePack.Annotations.dll",
     "Microsoft.Bcl.AsyncInterfaces.dll",
@@ -71,11 +84,11 @@ def verify(base: str = DEFAULT_BASE, *, verbose: bool = True) -> int:
     edge_cached: list[str] = []
 
     published = {entry["filename"] for entry in meta}
-    missing_runtime = [name for name in MPV2_RUNTIME_ASSEMBLIES if name not in published]
+    missing_runtime = [name for name in MPV2_RUNTIME_FILES if name not in published]
 
     if missing_runtime:
         failures.append(
-            "MPV2 runtime closure incomplete, the client will fail at lobby create: "
+            "MPV2 runtime closure incomplete, the client will fail at lobby create (assembly or its .exe.config): "
             + ", ".join(missing_runtime)
         )
 
